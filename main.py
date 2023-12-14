@@ -47,17 +47,24 @@ class Player:
         self.player_laser = pygame.image.load("player_laser.png")
         self.player_laser = pygame.transform.scale(self.player_laser, (100, 90))
         self.moving = False
+        self.bullets = 5
 
         screen.blit(self.ship_idle, self.player_position)
 
     def move(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
-            self.player_position.y -= 5
-            self.moving = True
+            if self.player_position.y < 0:
+                return
+            else:
+                self.player_position.y -= 5
+                self.moving = True
         elif keys[pygame.K_s]:
-            self.player_position.y += 5
-            self.moving = True
+            if self.player_position.y > 500:
+                return
+            else:
+                self.player_position.y += 5
+                self.moving = True
         else:
             self.moving = False
 
@@ -69,7 +76,11 @@ class Player:
             screen.blit(self.ship_idle, self.player_position)
 
     def shoot(self):
-        player_lasers.append(screen.blit(self.player_laser, (self.player_position.x, self.player_position.y + 3)))
+        if self.bullets == 0:
+            return
+        else:
+            player_lasers.append(screen.blit(self.player_laser, (self.player_position.x, self.player_position.y + 3)))
+            self.bullets -= 1
 
     def explode(self):
         if self.lives == 0:
@@ -108,8 +119,9 @@ class Ufo:
 
 UFO_CREATE = pygame.USEREVENT + 1
 UFO_SHOOT = pygame.USEREVENT + 2
+BULLET_GET = pygame.USEREVENT + 3
 
-pygame.time.set_timer(UFO_CREATE, random.randint(3000, 5000))
+pygame.time.set_timer(UFO_CREATE, random.randint(2000, 4000))
 pygame.time.set_timer(UFO_SHOOT, random.randint(1000, 3000))
 
 player = Player()
@@ -122,11 +134,17 @@ while running:
             running = False
         if event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
             player.shoot()
+            pygame.time.set_timer(BULLET_GET, 1000)
         if event.type == UFO_CREATE:
             UFOs.append(Ufo())
         if event.type == UFO_SHOOT:
             if UFOs:
                 random.choice(UFOs).shoot()
+        if event.type == BULLET_GET:
+            if player.bullets == 5:
+                player.bullets = 5
+            else:
+                player.bullets += 1
 
     screen.fill((0, 0, 0))
 
@@ -134,6 +152,8 @@ while running:
     screen.blit(lives_text, (10, 10))
     score_text = font.render(f"Score: {score}", True, (255, 255, 255))
     screen.blit(score_text, (10, 40))
+    bullets_text = font.render(f"Bullets: {player.bullets}", True, (255, 255, 255))
+    screen.blit(bullets_text, (10, 70))
 
     player.move()
     player.draw()
