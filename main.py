@@ -120,13 +120,19 @@ class Ufo:
         explosions.append(Explosion(self.enemy_position))
 
 
+create_min = 3000
+create_max = 5000
+shoot_max = 3000
+
+
 UFO_CREATE = pygame.USEREVENT + 1
 UFO_SHOOT = pygame.USEREVENT + 2
 BULLET_GET = pygame.USEREVENT + 3
 
-pygame.time.set_timer(UFO_CREATE, random.randint(2000, 4000))
+pygame.time.set_timer(UFO_CREATE, random.randint(create_min, create_max))
 pygame.time.set_timer(UFO_SHOOT, random.randint(1000, 3000))
 
+UFOs.append(Ufo())
 player = Player()
 running = True
 while running:
@@ -191,6 +197,17 @@ while running:
                 ufo.explode()
                 UFOs.remove(ufo)
                 score += 1
+
+                if score % 10 == 0:
+                    if create_min > 1000:
+                        create_min -= 500
+                    if create_max > 1000:
+                        create_max -= 500
+                    if shoot_max > 1000:
+                        shoot_max -= 500
+                    pygame.time.set_timer(UFO_CREATE, random.randint(create_min, create_max))
+                    pygame.time.set_timer(UFO_SHOOT, random.randint(1000, shoot_max))
+
                 break
 
     player_rect = pygame.Rect(player.player_position.x + 26, player.player_position.y + 30, 50, 38)
