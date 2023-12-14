@@ -15,6 +15,7 @@ player_lasers = []
 UFOs = []
 explosions = []
 
+
 class Explosion:
     def __init__(self, position):
         self.position = position
@@ -22,7 +23,7 @@ class Explosion:
         self.images = [pygame.transform.scale(image, (200, 200)) for image in self.images]
         self.index = 0
         self.image = self.images[self.index]
-        self.rect = self.image.get_rect(center = position)
+        self.rect = self.image.get_rect(center=position)
         self.rect = self.rect.move(+50, +50)
         self.framecount = 0
 
@@ -34,6 +35,7 @@ class Explosion:
                 explosions.remove(self)
             else:
                 self.image = self.images[self.index]
+
 
 class Player:
     def __init__(self):
@@ -68,7 +70,6 @@ class Player:
         else:
             self.moving = False
 
-
     def draw(self):
         if self.moving:
             screen.blit(self.ship_active, self.player_position)
@@ -79,7 +80,7 @@ class Player:
         if self.bullets == 0:
             return
         else:
-            player_lasers.append(screen.blit(self.player_laser, (self.player_position.x, self.player_position.y + 3)))
+            player_lasers.append(screen.blit(self.player_laser, (self.player_position.x + 20, self.player_position.y + 3)))
             self.bullets -= 1
 
     def explode(self):
@@ -112,10 +113,12 @@ class Ufo:
         screen.blit(self.enemy_ship, self.enemy_position)
 
     def shoot(self):
-        self.enemy_lasers.append(screen.blit(self.enemy_laser, (self.enemy_position.x - 100, self.enemy_position.y + 3)))
+        self.enemy_lasers.append(
+            screen.blit(self.enemy_laser, (self.enemy_position.x - 100, self.enemy_position.y + 3)))
 
     def explode(self):
         explosions.append(Explosion(self.enemy_position))
+
 
 UFO_CREATE = pygame.USEREVENT + 1
 UFO_SHOOT = pygame.USEREVENT + 2
@@ -201,7 +204,7 @@ while running:
             # pygame.draw.rect(screen, (255, 0, 0), ufo_rect, 2)
             if enemy_laser_rect.colliderect(player_rect):
                 ufo.enemy_lasers.remove(laser)
-                if player.explode() == True:
+                if player.explode():
                     running = False
 
     for ufo in UFOs:
@@ -209,7 +212,7 @@ while running:
         # pygame.draw.rect(screen, (255, 0, 0), ufo_rect, 2)
         if player_rect.colliderect(ufo_rect):
             UFOs.remove(ufo)
-            if player.explode() == True:
+            if player.explode():
                 running = False
 
     for explosion in explosions:
@@ -220,4 +223,3 @@ while running:
     clock.tick(60)
 
 pygame.quit()
-
