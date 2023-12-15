@@ -10,22 +10,31 @@ pygame.display.set_icon(pygame.image.load("ufo.png"))
 clock = pygame.time.Clock()
 font = pygame.font.SysFont("Arial", 30)
 large_font = pygame.font.SysFont("Arial", 50)
+
 score = 0
 
 player_sprite = []
 player_lasers = []
+enemy_lasers = []
 UFOs = []
 explosions = []
 
+create_min = 3000
+create_max = 5000
+shoot_max = 3000
+
+UFO_CREATE = pygame.USEREVENT + 1
+UFO_SHOOT = pygame.USEREVENT + 2
+BULLET_GET = pygame.USEREVENT + 3
 
 class Explosion:
-    def __init__(self, position, boss=False):
+    def __init__(self, position, size=1):
         self.position = position
         self.images = [pygame.image.load(f"explosion{i}.png") for i in range(1, 4)]
-        if boss:
-            self.images = [pygame.transform.scale(image, (400, 400)) for image in self.images]
-        else:
+        if size == 1:
             self.images = [pygame.transform.scale(image, (200, 200)) for image in self.images]
+        elif size == 2:
+            self.images = [pygame.transform.scale(image, (400, 400)) for image in self.images]
         self.index = 0
         self.image = self.images[self.index]
         self.rect = self.image.get_rect(center=position)
@@ -96,7 +105,7 @@ class Player:
             self.bullets -= 1
 
     def explode(self):
-        if self.lives == 0:
+        if self.lives <= 0:
             explosions.append(Explosion(self.player_position))
             self.dead = True
             self.player_position = pygame.Vector2(1000, 1000)
@@ -104,82 +113,96 @@ class Player:
         else:
             self.lives -= 1
 
-
 class Ufo:
-    def __init__(self):
-        self.enemy_position = pygame.Vector2(800, random.randint(100, 500))
+    def __init__(self, boss=False, lives=0):
+        self.boss = boss
 
-        self.enemy_ship = pygame.image.load("ufo.png")
-        self.enemy_ship = pygame.transform.scale(self.enemy_ship, (100, 100))
-        self.enemy_laser = pygame.image.load("enemy_laser.png")
-        self.enemy_laser = pygame.transform.scale(self.enemy_laser, (100, 90))
+        if self.boss:
+            UFOs.clear()
 
-        self.enemy_lasers = []
+            self.enemy_position = pygame.Vector2(800, 300)
+            self.enemy_ship = pygame.image.load("ufo.png")
+            self.enemy_ship = pygame.transform.scale(self.enemy_ship, (300, 300))
+            self.enemy_laser = pygame.image.load("enemy_laser.png")
+            self.enemy_laser = pygame.transform.scale(self.enemy_laser, (100, 90))
+
+            self.boss_active = True
+            self.lives = lives
+            self.going_up = True
+            self.going_down = False
+            self.hitbox = pygame.Rect(self.enemy_position.x + 15, self.enemy_position.y + 105, 270, 111)
+
+            pygame.time.set_timer(UFO_SHOOT, random.randint(1000, 1500))
+            pygame.time.set_timer(UFO_CREATE, 0)
+
+        else:
+            self.enemy_position = pygame.Vector2(800, random.randint(100, 500))
+            self.enemy_ship = pygame.image.load("ufo.png")
+            self.enemy_ship = pygame.transform.scale(self.enemy_ship, (100, 100))
+            self.enemy_laser = pygame.image.load("enemy_laser.png")
+            self.enemy_laser = pygame.transform.scale(self.enemy_laser, (100, 90))
+            self.hitbox = pygame.Rect(self.enemy_position.x + 5, self.enemy_position.y + 35, 90, 37)
 
         screen.blit(self.enemy_ship, self.enemy_position)
 
     def move(self):
-        self.enemy_position.x -= 2
-        if self.enemy_position.x < 0:
+        if self.boss:
+            self.enemy_position.x -= 1
+            if self.enemy_position.y == -100:
+                self.going_up = False
+                self.going_down = True
+            if self.enemy_position.y == 400:
+                self.going_up = True
+                self.going_down = False
+
+            if self.going_up:
+                self.enemy_position.y -= 2
+                self.hitbox = pygame.Rect(self.enemy_position.x + 15, self.enemy_position.y + 105, 270, 111)
+            if self.going_down:
+                self.enemy_position.y += 2
+                self.hitbox = pygame.Rect(self.enemy_position.x + 15, self.enemy_position.y + 105, 270, 111)
+        else:
+            self.enemy_position.x -= 2
+            self.hitbox = pygame.Rect(self.enemy_position.x + 5, self.enemy_position.y + 35, 90, 37)
+
+        if not self.boss and self.enemy_position.x < -100 or self.boss and self.enemy_position.x < -300:
+            if self.boss:
+                player.lives = -1
+                player.explode()
+            else:
+                player.explode()
+
             UFOs.remove(self)
 
     def draw(self):
         screen.blit(self.enemy_ship, self.enemy_position)
+        #pygame.draw.rect(screen, (255, 0, 0), self.hitbox, 2)
 
     def shoot(self):
-        self.enemy_lasers.append(
-            screen.blit(self.enemy_laser, (self.enemy_position.x - 100, self.enemy_position.y + 3)))
+        if self.boss:
+            enemy_lasers.append(screen.blit(self.enemy_laser, (self.enemy_position.x - 30, self.enemy_position.y + 100)))
+        else:
+            enemy_lasers.append(screen.blit(self.enemy_laser, (self.enemy_position.x - 50, self.enemy_position.y + 3)))
 
     def explode(self):
-        explosions.append(Explosion(self.enemy_position))
-
-
-class Boss:
-    def __init__(self, lives):
-        self.enemy_position = pygame.Vector2(800, 300)
-        self.lives = lives
-
-        self.boss_ship = pygame.image.load("ufo.png")
-        self.boss_ship = pygame.transform.scale(self.boss_ship, (300, 300))
-        self.boss_laser = pygame.image.load("enemy_laser.png")
-        self.boss_laser = pygame.transform.scale(self.boss_laser, (200, 180))
-        #self.hitbox = pygame.Rect(self.enemy_position.x + 5, self.enemy_position.y + 35, 90, 37)
-        self.boss_dead = False
-
-        self.boss_lasers = []
-
-        screen.blit(self.boss_ship, self.enemy_position)
-        
-    def move(self):
-        self.enemy_position.x -= 2
-        if self.enemy_position.x < 0:
-            player.lives = 0
-            player.explode()
-
-    def draw(self):
-        screen.blit(self.boss_ship, self.enemy_position)
-
-    def shoot(self):
-        self.boss_lasers.append(
-            screen.blit(self.boss_laser, (self.enemy_position.x - 100, self.enemy_position.y + 3)))
-
-    def explode(self):
-        explosions.append(Explosion(self.enemy_position, boss=True))
-        self.boss_dead = True
-
-create_min = 3000
-create_max = 5000
-shoot_max = 3000
-
-UFO_CREATE = pygame.USEREVENT + 1
-UFO_SHOOT = pygame.USEREVENT + 2
-BULLET_GET = pygame.USEREVENT + 3
+        if self.boss:
+            if self.lives > 0:
+                self.lives -= 1
+            else:
+                explosions.append(Explosion((self.enemy_position.x + 150, self.enemy_position.y + 150), 2))
+                pygame.time.set_timer(UFO_SHOOT, random.randint(1000, shoot_max))
+                pygame.time.set_timer(UFO_CREATE, random.randint(create_min, create_max))
+                UFOs.remove(self)
+        else:
+            explosions.append(Explosion(self.enemy_position))
+            UFOs.remove(self)
 
 pygame.time.set_timer(UFO_CREATE, random.randint(create_min, create_max))
 pygame.time.set_timer(UFO_SHOOT, random.randint(1000, 3000))
 
 UFOs.append(Ufo())
 player = Player()
+
 running = True
 while running:
     for event in pygame.event.get():
@@ -205,10 +228,11 @@ while running:
 
     lives_text = font.render(f"Lives: {player.lives + 1}", True, (255, 255, 255))
     screen.blit(lives_text, (10, 10))
-    score_text = font.render(f"Score: {score}", True, (255, 255, 255))
-    screen.blit(score_text, (10, 40))
     bullets_text = font.render(f"Bullets: {player.bullets}", True, (255, 255, 255))
-    screen.blit(bullets_text, (10, 70))
+    screen.blit(bullets_text, (10, 40))
+    score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+    screen.blit(score_text, (10, 70))
+
 
     player.move()
     player.draw()
@@ -224,24 +248,21 @@ while running:
         else:
             screen.blit(player.laser, laser)
 
-    for ufo in UFOs:
-        for laser in ufo.enemy_lasers:
-            laser.x -= 7
-            if laser.x < 0:
-                ufo.enemy_lasers.remove(laser)
-            else:
-                screen.blit(ufo.enemy_laser, laser)
+    for laser in enemy_lasers:
+        laser.x -= 7
+        if laser.x < -100:
+            enemy_lasers.remove(laser)
+        else:
+            screen.blit(ufo.enemy_laser, laser)
 
     for laser in player_lasers:
         laser_rect = pygame.Rect(laser.x + 35, laser.y + 40, 35, 14)
         # pygame.draw.rect(screen, (255, 0, 0), laser_rect, 2)
         for ufo in UFOs:
-            ufo_rect = pygame.Rect(ufo.enemy_position.x + 5, ufo.enemy_position.y + 35, 90, 37)
-            # pygame.draw.rect(screen, (255, 0, 0), ufo_rect, 2)
-            if laser_rect.colliderect(ufo_rect):
+            # pygame.draw.rect(screen, (255, 0, 0), ufo.hitbox, 2)
+            if laser_rect.colliderect(ufo.hitbox):
                 player_lasers.remove(laser)
                 ufo.explode()
-                UFOs.remove(ufo)
                 score += 1
 
                 if score % 10 == 0:
@@ -254,23 +275,21 @@ while running:
                     pygame.time.set_timer(UFO_CREATE, random.randint(create_min, create_max))
                     pygame.time.set_timer(UFO_SHOOT, random.randint(1000, shoot_max))
 
-                break
+                if score % 25 == 0:
+                    boss_lives = (score // 25) + 1
+                    UFOs.append(Ufo(True, boss_lives))
+                    pygame.time.set_timer(UFO_SHOOT, 1000)
+
+    for laser in enemy_lasers:
+        enemy_laser_rect = pygame.Rect(laser.x + 35, laser.y + 40, 35, 14)
+        # pygame.draw.rect(screen, (255, 0, 0), enemy_laser_rect, 2)
+        if enemy_laser_rect.colliderect(player.hitbox):
+            enemy_lasers.remove(laser)
+            player.explode()
 
     for ufo in UFOs:
-        for laser in ufo.enemy_lasers:
-            enemy_laser_rect = pygame.Rect(laser.x + 35, laser.y + 40, 35, 14)
-            # pygame.draw.rect(screen, (255, 0, 0), enemy_laser_rect, 2)
-            ufo_rect = pygame.Rect(ufo.enemy_position.x + 5, ufo.enemy_position.y + 35, 90, 37)
-            # pygame.draw.rect(screen, (255, 0, 0), ufo_rect, 2)
-            if enemy_laser_rect.colliderect(player.hitbox):
-                ufo.enemy_lasers.remove(laser)
-                player.explode()
-
-    for ufo in UFOs:
-        ufo_rect = pygame.Rect(ufo.enemy_position.x + 5, ufo.enemy_position.y + 35, 90, 37)
-        # pygame.draw.rect(screen, (255, 0, 0), ufo_rect, 2)
-        if player.hitbox.colliderect(ufo_rect):
-            UFOs.remove(ufo)
+        # pygame.draw.rect(screen, (255, 0, 0), ufo.hitbox, 2)
+        if player.hitbox.colliderect(ufo.hitbox):
             player.explode()
 
     for explosion in explosions:
@@ -279,7 +298,7 @@ while running:
 
     if player.dead and len(explosions) == 0:
         game_over_text = large_font.render("GAME OVER", True, (255, 255, 255))
-        screen.blit(game_over_text, (280, 300))
+        screen.blit(game_over_text, (280, 10))
 
     pygame.display.flip()
     clock.tick(60)
